@@ -1,0 +1,17 @@
+Flask==3.0.0
+Flask-CORS==4.0.0
+transformers==4.46.0
+scipy
+accelerate
+torch
+torchaudio
+pyannote.audio==3.1.1
+torchvision
+librosa==0.10.1
+soundfile==0.12.1
+numpy<2.0
+python-dotenv==1.0.0
+Werkzeug==3.0.1
+sentencepiece
+protobuf
+openai-whisper

@@ -1,0 +1,59 @@
+modules = ["nodejs-20", "php-8.2", "web", "python-3.12"]
+run = "npm run dev"
+hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
+
+[nix]
+channel = "stable-25_05"
+packages = ["chromium", "glib", "nss", "nspr", "atk", "cups", "libdrm", "expat", "xorg.libxcb", "libxkbcommon", "xorg.libX11", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXext", "xorg.libXfixes", "xorg.libXrandr", "mesa", "gtk3", "pango", "cairo", "alsa-lib", "ffmpeg"]
+
+[deployment]
+deploymentTarget = "autoscale"
+build = ["npm", "run", "build"]
+run = ["npm", "run", "start"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 38785
+externalPort = 3000
+
+[env]
+PORT = "5000"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 5000
+
+[agent]
+expertMode = true
+
+[userenv]
+
+[userenv.shared]
+MYSQL_HOST = "82.25.105.94"
+MYSQL_PORT = "3306"
+MYSQL_USER = "cybaemtechnet_reqgen_db"
+MYSQL_PASSWORD = "Cybaem@2025"
+MYSQL_DATABASE = "cybaemtechnet_reqgen_db"

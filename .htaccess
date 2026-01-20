@@ -1,0 +1,23 @@
+# Root .htaccess for ReqGen project
+
+# Enable rewrite engine
+RewriteEngine On
+
+# Redirect all API requests to api/ folder
+RewriteRule ^api/(.*)$ api/$1 [L,QSA]
+
+# Allow static files to be served directly
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Security: Prevent access to sensitive files
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Security: Prevent access to package files
+<FilesMatch "(package\.json|package-lock\.json|tsconfig\.json|\.env)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

@@ -1,0 +1,30 @@
+node_modules
+dist
+.DS_Store
+server/public
+vite.config.ts.*
+*.tar.gz
+.env.storage-data.json
+
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+
+# Python cache and environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# API Keys and secrets (backup protection)
+**/config/secrets.json
+**/config/api_keys.json
