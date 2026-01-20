@@ -316,6 +316,10 @@ export default function NoteEditor() {
           throw new Error(`Unsupported audio format. Please use: ${errorData.supportedFormats.join(', ')} files. For ${file.type} files, please use the 🎤 Record button instead.`);
         }
 
+        if (response.status === 503) {
+          throw new Error(`Audio Processing Unavailable: ${errorData.details || 'The transcription service is currently down. Please try again in a few moments.'} ${errorData.suggestion ? '✓ ' + errorData.suggestion : ''}`);
+        }
+
         throw new Error(errorData.details || errorData.error || 'Failed to process audio');
       }
 
@@ -439,7 +443,12 @@ export default function NoteEditor() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Transcription failed');
+        
+        if (response.status === 503) {
+          throw new Error(`Transcription Service Unavailable: ${errorData.details || 'Please try again in a few moments.'}`);
+        }
+        
+        throw new Error(errorData.details || errorData.error || 'Transcription failed');
       }
 
       setAudioProgress(80);

@@ -421,7 +421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clearTimeout(timeout);
         console.error('Vakyansh fetch failed, attempting fallback:', fetchError);
 
-        // --- FALLBACK TO PYTHON WHISPER ---
+        // --- FALLBACK 1: PYTHON WHISPER BACKEND ---
         try {
           console.log(`Attempting fallback transcription via Python backend...`);
           const pythonBackendUrl = process.env.PYTHON_BACKEND_URL || 'http://localhost:5000';
@@ -430,10 +430,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const audioBlob = new Blob([audioBuffer], { type: req.file.mimetype });
           formData.append('audio', audioBlob, req.file.originalname);
 
+          const pythonController = new AbortController();
+          const pythonTimeout = setTimeout(() => pythonController.abort(), 30000); // 30 second timeout for fallback
+
           const pythonResponse = await fetch(`${pythonBackendUrl}/api/transcribe`, {
             method: 'POST',
-            body: formData
+            body: formData,
+            signal: pythonController.signal
           });
+
+          clearTimeout(pythonTimeout);
 
           if (pythonResponse.ok) {
             const pythonResult = await pythonResponse.json();
@@ -444,16 +450,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
               language: pythonResult.language,
               source: 'fallback-whisper'
             });
+          } else {
+            console.warn(`Python backend returned ${pythonResponse.status}`);
           }
-        } catch (fallbackError) {
-          console.error('Fallback transcription also failed:', fallbackError);
+        } catch (fallbackError: any) {
+          console.error('Fallback 1 (Python backend) failed:', fallbackError?.message);
         }
-        // --- END FALLBACK ---
+        // --- END FALLBACK 1 ---
+
+        // --- FALLBACK 2: OPENAI WHISPER API (for cloud deployments) ---
+        if (process.env.OPENAI_API_KEY) {
+          try {
+            console.log(`Attempting secondary fallback via OpenAI Whisper API...`);
+            
+            const openaiFormData = new FormData();
+            const audioBlob = new Blob([audioBuffer], { type: req.file.mimetype });
+            openaiFormData.append('file', audioBlob, 'audio.webm');
+            openaiFormData.append('model', 'whisper-1');
+            if (language !== 'hi') {
+              openaiFormData.append('language', language === 'en' ? 'en' : language);
+            }
+
+            const openaiController = new AbortController();
+            const openaiTimeout = setTimeout(() => openaiController.abort(), 60000); // 60 second timeout
+
+            const openaiResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+              },
+              body: openaiFormData,
+              signal: openaiController.signal
+            });
+
+            clearTimeout(openaiTimeout);
+
+            if (openaiResponse.ok) {
+              const openaiResult = await openaiResponse.json();
+              console.log('Secondary fallback transcription successful via OpenAI Whisper');
+              return res.json({
+                success: true,
+                transcription: openaiResult.text,
+                language: language,
+                source: 'openai-whisper'
+              });
+            } else {
+              const errorText = await openaiResponse.text().catch(() => '');
+              console.warn(`OpenAI API returned ${openaiResponse.status}: ${errorText}`);
+            }
+          } catch (openaiError: any) {
+            console.error('Fallback 2 (OpenAI) also failed:', openaiError?.message);
+          }
+        }
+        // --- END FALLBACK 2 ---
 
         res.status(503).json({
           error: "Transcription service unreachable",
-          details: "Failed to connect to primary transcription service. The service might be down.",
-          technical: fetchError.message
+          details: "All transcription services are currently unavailable. Please try again in a few moments.",
+          technical: fetchError.message,
+          suggestion: process.env.NODE_ENV === 'production' 
+            ? "The transcription services are temporarily down. Please try again later." 
+            : "Ensure Python backend is running or set PYTHON_BACKEND_URL environment variable"
         });
         return;
       }
@@ -479,10 +536,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const audioBlob = new Blob([audioBuffer], { type: req.file.mimetype });
             formData.append('audio', audioBlob, req.file.originalname);
 
+            const pythonController = new AbortController();
+            const pythonTimeout = setTimeout(() => pythonController.abort(), 30000); // 30 second timeout for fallback
+
             const pythonResponse = await fetch(`${pythonBackendUrl}/api/transcribe`, {
               method: 'POST',
-              body: formData
+              body: formData,
+              signal: pythonController.signal
             });
+
+            clearTimeout(pythonTimeout);
 
             if (pythonResponse.ok) {
               const pythonResult = await pythonResponse.json();
@@ -493,17 +556,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 language: pythonResult.language,
                 source: 'fallback-whisper'
               });
+            } else {
+              console.warn(`Python backend returned ${pythonResponse.status}`);
             }
-          } catch (fallbackError) {
-            console.error('Fallback transcription also failed:', fallbackError);
+          } catch (fallbackError: any) {
+            console.error('Fallback 1 (Python backend) failed:', fallbackError?.message);
           }
+
+          // --- FALLBACK 2: OPENAI WHISPER API ---
+          if (process.env.OPENAI_API_KEY) {
+            try {
+              console.log(`Attempting secondary fallback via OpenAI Whisper API...`);
+              
+              const openaiFormData = new FormData();
+              const audioBlob = new Blob([audioBuffer], { type: req.file.mimetype });
+              openaiFormData.append('file', audioBlob, 'audio.webm');
+              openaiFormData.append('model', 'whisper-1');
+              if (language !== 'hi') {
+                openaiFormData.append('language', language === 'en' ? 'en' : language);
+              }
+
+              const openaiController = new AbortController();
+              const openaiTimeout = setTimeout(() => openaiController.abort(), 60000); // 60 second timeout
+
+              const openaiResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+                },
+                body: openaiFormData,
+                signal: openaiController.signal
+              });
+
+              clearTimeout(openaiTimeout);
+
+              if (openaiResponse.ok) {
+                const openaiResult = await openaiResponse.json();
+                console.log('Secondary fallback transcription successful via OpenAI Whisper');
+                return res.json({
+                  success: true,
+                  transcription: openaiResult.text,
+                  language: language,
+                  source: 'openai-whisper'
+                });
+              } else {
+                const errorText = await openaiResponse.text().catch(() => '');
+                console.warn(`OpenAI API returned ${openaiResponse.status}: ${errorText}`);
+              }
+            } catch (openaiError: any) {
+              console.error('Fallback 2 (OpenAI) also failed:', openaiError?.message);
+            }
+          }
+          // --- END FALLBACK 2 ---
         }
         // --- END FALLBACK ---
 
         res.status(response.status).json({
           error: "Transcription service error",
           details: `Vakyansh API returned ${response.status}. The service might be busy or the file size too large.`,
-          vakyanshError: errorText.substring(0, 200)
+          vakyanshError: errorText.substring(0, 200),
+          suggestion: response.status >= 500 ? "The service is temporarily unavailable. Please try again in a few moments." : undefined
         });
         return;
       }
