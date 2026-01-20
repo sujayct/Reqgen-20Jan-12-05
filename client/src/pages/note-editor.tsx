@@ -28,6 +28,9 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { DocumentPreview } from "@/components/document-preview";
 import type { InsertDocument, Settings } from "@shared/schema";
 
+// Get Python backend URL from environment, fallback to direct backend API
+const PYTHON_BACKEND_URL = import.meta.env.VITE_PYTHON_BACKEND_URL || '/api';
+
 export default function NoteEditor() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -572,7 +575,15 @@ export default function NoteEditor() {
     console.log("Starting AI refinement via backend...");
 
     try {
-      const response = await fetch(`${PYTHON_BACKEND_URL}/api/summarize`, {
+      // Try Python backend first, fallback to main backend API
+      let url = `${PYTHON_BACKEND_URL}/api/summarize`;
+      
+      // If using fallback API path, use the main backend endpoint instead
+      if (!import.meta.env.VITE_PYTHON_BACKEND_URL) {
+        url = `/api/python-backend/summarize`;
+      }
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -602,7 +613,7 @@ export default function NoteEditor() {
       console.error("Refinement error:", error);
       toast({
         title: "Refinement Failed",
-        description: error instanceof Error ? error.message : "Failed to refine content. Ensure backend is running.",
+        description: error instanceof Error ? error.message : "Failed to refine content. Ensure backend is running or Python backend URL is configured.",
         variant: "destructive",
       });
     } finally {
@@ -650,7 +661,15 @@ export default function NoteEditor() {
     try {
       console.log("Generating document from Python backend:", { type: docType });
 
-      const response = await fetch(`${PYTHON_BACKEND_URL}/api/generate-document`, {
+      // Try Python backend first, fallback to main backend API
+      let url = `${PYTHON_BACKEND_URL}/api/generate-document`;
+      
+      // If using fallback API path, use the main backend endpoint instead
+      if (!import.meta.env.VITE_PYTHON_BACKEND_URL) {
+        url = `/api/python-backend/generate-document`;
+      }
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
