@@ -716,6 +716,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Python Backend Proxy Endpoints
+  const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:5000";
+
+  // Proxy for AI summarization
+  app.post("/api/python-backend/summarize", async (req, res) => {
+    try {
+      const { text } = req.body;
+      if (!text) {
+        res.status(400).json({ error: "Text is required" });
+        return;
+      }
+
+      const response = await fetch(`${PYTHON_BACKEND_URL}/api/summarize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+        signal: AbortSignal.timeout(60000), // 60 second timeout
+      });
+
+      if (!response.ok) {
+        throw new Error(`Python backend error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Summarization error:", error);
+      res.status(503).json({ 
+        error: "Summarization service unavailable",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Proxy for document generation
+  app.post("/api/python-backend/generate-document", async (req, res) => {
+    try {
+      const { text, document_type, metadata } = req.body;
+      if (!text || !document_type) {
+        res.status(400).json({ error: "Text and document_type are required" });
+        return;
+      }
+
+      const response = await fetch(`${PYTHON_BACKEND_URL}/api/generate-document`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, document_type, metadata }),
+        signal: AbortSignal.timeout(120000), // 120 second timeout for generation
+      });
+
+      if (!response.ok) {
+        throw new Error(`Python backend error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Document generation error:", error);
+      res.status(503).json({ 
+        error: "Document generation service unavailable",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
