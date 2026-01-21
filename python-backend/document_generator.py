@@ -30,14 +30,16 @@ from datetime import timedelta
 
 class SmartT5LargeDocumentGenerator:
     """
-    Intelligent T5-based document generator.
-    Complete pipeline: Audio -> T5 Large Summary -> Professional Documents
+    Intelligent T5-based document generator with Flan-T5-Large.
+    Complete pipeline: Audio -> T5-Large Summary -> Professional Documents
+    Updated model: google/flan-t5-large for superior summarization quality
     Adapted from the notebook to work within the backend application.
     """
     
-    def __init__(self, whisper_model="base", t5_model="google/flan-t5-base"):
+    def __init__(self, whisper_model="base", t5_model="google/flan-t5-large"):
         """
-        Initialize with T5 and Whisper models
+        Initialize with T5-Large and Whisper models
+        Uses the larger Flan-T5-Large model for better summarization
         """
         # Clear memory
         torch.cuda.empty_cache()
