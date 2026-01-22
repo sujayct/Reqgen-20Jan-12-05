@@ -43,8 +43,8 @@ SUMMARY_MAX_WORDS = 1000  # Maximum summary length
 CHUNK_SIZE_WORDS = 400  # Words per chunk (reduced to fit 1024 token limit)
 
 # Flask settings
-FLASK_HOST = "127.0.0.1"  # Changed from 0.0.0.0 to avoid permission issues
-FLASK_PORT = 5001  # Changed from 5000 to avoid conflicts
+FLASK_HOST = "127.0.0.1"  # Listen on localhost
+FLASK_PORT = 5000  # Must match Express proxy configuration
 DEBUG = os.getenv("FLASK_DEBUG", "False").lower() == "true"
 
 # CORS settings - Allow requests from the frontend
