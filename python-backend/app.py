@@ -86,11 +86,17 @@ def summarize_text():
             return jsonify({'error': 'No text provided'}), 400
         
         text = data['text'].strip()
+        print(f"[/api/summarize] Processing {len(text)} characters...")
         
-        generator = document_generator.get_generator()
+        try:
+            generator = document_generator.get_generator()
+        except Exception as e:
+            print(f"[ERROR] Model loading failed: {str(e)}")
+            return jsonify({'error': 'Model loading failed', 'details': str(e)}), 500
         
         # Use generator's logic (mimicking process_audio_smart steps for text only)
         word_count = len(text.split())
+        print(f"[/api/summarize] Word count: {word_count}")
         
         # Adaptive settings
         summary_config = generator.calculate_adaptive_summary_length(word_count, 'balanced')
@@ -105,7 +111,8 @@ def summarize_text():
                 max_length=summary_config['max_length'],
                 min_length=summary_config['min_length']
             )
-            
+        
+        print(f"[/api/summarize] Summary generated: {len(summary)} chars")
         return jsonify({
             'success': True,
             'summary': summary,
@@ -114,7 +121,7 @@ def summarize_text():
         }), 200
     
     except Exception as e:
-        print(f"Error during summarization: {str(e)}")
+        print(f"[ERROR] Summarization failed: {str(e)}")
         traceback.print_exc()
         return jsonify({'error': 'Summarization failed', 'details': str(e)}), 500
 

@@ -40,6 +40,7 @@ class SmartT5LargeDocumentGenerator:
         """
         Initialize with T5-Large and Whisper models
         Uses the larger Flan-T5-Large model for better summarization
+        Falls back to T5-base on CPU for performance
         """
         # Clear memory
         torch.cuda.empty_cache()
@@ -52,7 +53,11 @@ class SmartT5LargeDocumentGenerator:
             print(f"🚀 GPU: {torch.cuda.get_device_name(0)}")
             print(f"💾 GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
         else:
-            print("⚠️ WARNING: Running on CPU. switched to 'base' models for performance.")
+            print("⚠️ WARNING: Running on CPU. T5-Large too slow, using T5-base instead.")
+            # Use base model on CPU for performance
+            if "large" in t5_model.lower():
+                t5_model = "google/flan-t5-base"
+                print(f"📉 Switching to {t5_model} for CPU performance")
         
         # Validate Whisper availability
         if whisper is None:
