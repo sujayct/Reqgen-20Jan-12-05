@@ -238,11 +238,13 @@ if __name__ == '__main__':
     print(f"Server starting on http://{config.FLASK_HOST}:{config.FLASK_PORT}")
     
     # Preload models on startup
-    # try:
-    #     print("Preloading models...")
-    #     document_generator.get_generator()
-    # except Exception as e:
-    #     print(f"Warning: Model preload failed: {e}")
+    try:
+        print("🔄 Preloading T5 model (first time: ~2-3 minutes)...")
+        document_generator.get_generator()
+        print("✅ Models preloaded successfully! Server ready for requests.")
+    except Exception as e:
+        print(f"⚠️  Warning: Model preload failed: {e}")
+        print("Models will load on first request (slow).")
         
     app.run(
         host=config.FLASK_HOST,

@@ -732,7 +732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
-        signal: AbortSignal.timeout(60000), // 60 second timeout
+        signal: AbortSignal.timeout(180000), // 180 second timeout for model loading
       });
 
       if (!response.ok) {
@@ -763,7 +763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, document_type, metadata }),
-        signal: AbortSignal.timeout(120000), // 120 second timeout for generation
+        signal: AbortSignal.timeout(300000), // 300 second timeout for generation with model loading
       });
 
       if (!response.ok) {
