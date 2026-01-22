@@ -38,6 +38,9 @@ def transcribe_audio():
     """
     Transcribe an audio file using Whisper
     """
+    import gc
+    import torch
+    
     try:
         if 'audio' not in request.files:
             return jsonify({'error': 'No audio file provided'}), 400
@@ -54,8 +57,18 @@ def transcribe_audio():
         file.save(file_path)
         
         try:
+            # Clear memory before processing
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            
             generator = document_generator.get_generator()
             result = generator.transcribe_audio(str(file_path))
+            
+            # Clean up after transcription
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             
             return jsonify({
                 'success': True,
@@ -80,7 +93,15 @@ def summarize_text():
     """
     Summarize text input using T5
     """
+    import gc
+    import torch
+    
     try:
+        # Clear memory before processing
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
         data = request.get_json()
         if not data or 'text' not in data:
             return jsonify({'error': 'No text provided'}), 400
@@ -101,18 +122,28 @@ def summarize_text():
         # Adaptive settings
         summary_config = generator.calculate_adaptive_summary_length(word_count, 'balanced')
         
-        if word_count < 25:
-            summary = text
-        elif word_count > 400:
-             summary = generator._summarize_long_text(text, summary_config, 'medium', None)
-        else:
-            summary = generator.generate_t5_summary(
-                text, 
-                max_length=summary_config['max_length'],
-                min_length=summary_config['min_length']
-            )
+        try:
+            if word_count < 25:
+                summary = text
+            elif word_count > 400:
+                 summary = generator._summarize_long_text(text, summary_config, 'medium', None)
+            else:
+                summary = generator.generate_t5_summary(
+                    text, 
+                    max_length=summary_config['max_length'],
+                    min_length=summary_config['min_length']
+                )
+        except Exception as e:
+            print(f"[ERROR] Summarization generation failed: {str(e)}")
+            raise
         
         print(f"[/api/summarize] Summary generated: {len(summary)} chars")
+        
+        # Clean up after generating summary
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
         return jsonify({
             'success': True,
             'summary': summary,
@@ -197,7 +228,15 @@ def generate_document_api():
     """
     Generate BRD or Purchase Order document from text
     """
+    import gc
+    import torch
+    
     try:
+        # Clear memory before processing
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
         data = request.get_json()
         if not data or 'text' not in data:
             return jsonify({'error': 'No text provided'}), 400
@@ -224,6 +263,11 @@ def generate_document_api():
         from datetime import datetime
         project_name = metadata.get('project_name', 'document').replace(' ', '_')
         filename = f"{document_type}_{project_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        
+        # Clean up after document generation
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         
         return jsonify({
             'success': True,
