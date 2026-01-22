@@ -728,6 +728,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
+      console.log(`[/api/python-backend/summarize] Forwarding ${text.length} characters to Python backend`);
+      
       const response = await fetch(`${PYTHON_BACKEND_URL}/api/summarize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -735,14 +737,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         signal: AbortSignal.timeout(180000), // 180 second timeout for model loading
       });
 
+      console.log(`[/api/python-backend/summarize] Response status: ${response.status}`);
+      
       if (!response.ok) {
-        throw new Error(`Python backend error: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`[/api/python-backend/summarize] Python backend error: ${response.status} - ${errorText}`);
+        throw new Error(`Python backend error: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
+      console.log(`[/api/python-backend/summarize] Success - returning summary`);
       res.json(data);
     } catch (error) {
-      console.error("Summarization error:", error);
+      console.error("[/api/python-backend/summarize] Summarization error:", error);
       res.status(503).json({ 
         error: "Summarization service unavailable",
         message: error instanceof Error ? error.message : "Unknown error"
