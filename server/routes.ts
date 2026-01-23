@@ -5,6 +5,7 @@ import { insertDocumentSchema, insertSettingsSchema } from "@shared/schema";
 import { sendEmail } from "./email";
 import htmlPdf from "html-pdf-node";
 import multer from "multer";
+import FormData from "form-data";
 
 // Temporary user credentials (will be moved to database later)
 const TEMP_USERS = [
@@ -426,23 +427,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`Attempting fallback transcription via Python backend...`);
           const pythonBackendUrl = process.env.PYTHON_BACKEND_URL || 'http://localhost:5000';
 
-          const formData = new FormData();
+          const form = new FormData();
+          
+          // Create a Blob-like object from the buffer
           const audioBlob = new Blob([audioBuffer], { type: req.file.mimetype });
-          formData.append('audio', audioBlob, req.file.originalname);
+          
+          form.append('audio', audioBlob, req.file.originalname);
 
           const pythonController = new AbortController();
           const pythonTimeout = setTimeout(() => pythonController.abort(), 30000); // 30 second timeout for fallback
 
+          console.log(`Sending audio to Python backend: ${req.file.originalname} (${audioBuffer.length} bytes)`);
+
           const pythonResponse = await fetch(`${pythonBackendUrl}/api/transcribe`, {
             method: 'POST',
-            body: formData,
+            body: form,
+            headers: form.getHeaders(),
             signal: pythonController.signal
           });
 
           clearTimeout(pythonTimeout);
+          const pythonStatus = pythonResponse.status;
+          const pythonText = await pythonResponse.text();
+          console.log(`Python backend response ${pythonStatus}: ${pythonText.substring(0, 200)}`);
 
           if (pythonResponse.ok) {
-            const pythonResult = await pythonResponse.json();
+            const pythonResult = JSON.parse(pythonText);
             console.log('Fallback transcription successful via Python/Whisper');
             return res.json({
               success: true,
@@ -451,7 +461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               source: 'fallback-whisper'
             });
           } else {
-            console.warn(`Python backend returned ${pythonResponse.status}`);
+            console.warn(`Python backend returned ${pythonStatus}`);
           }
         } catch (fallbackError: any) {
           console.error('Fallback 1 (Python backend) failed:', fallbackError?.message);
